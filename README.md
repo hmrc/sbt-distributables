@@ -22,10 +22,17 @@ Add the line ```.enablePlugins(SbtSlugPlugin)``` to your project to enable the p
 What it does
 ------------
 
-When enabled sbt-slug automatically creates and publishes a slug tgz artifact with the following structure:
+When enabled sbt-slug automatically creates and publishes a slug tgz artifact. For an artifact `tester` with version `1.0.0` this would result in the following:
 
-'name-version.tgz'
-- .
--   name-version
--   Procfile
--   start-docker.sh
+```
+tester-1.0.0.tgz
+  .
+    tester-1.0.0
+      bin
+      conf
+      lib
+      share
+      README.md
+    Procfile
+    start-docker.sh
+```
