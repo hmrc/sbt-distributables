@@ -21,7 +21,7 @@ import uk.gov.hmrc.SbtAutoBuildPlugin
 
 object PluginBuild extends Build {
 
-  val pluginName = "sbt-slug"
+  val pluginName = "sbt-distributables"
 
   lazy val root = Project(pluginName, base = file("."))
     .enablePlugins(SbtAutoBuildPlugin, SbtGitVersioning)
