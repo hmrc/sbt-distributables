@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.sbtslug
+package uk.gov.hmrc.sbtdistributables
 
 import java.io.{File, _}
 import java.util.zip.ZipInputStream
@@ -27,7 +27,7 @@ import org.apache.commons.compress.utils.IOUtils._
 import sbt.Keys._
 import sbt._
 
-object SbtSlugPlugin extends AutoPlugin {
+object SbtDistributablesPlugin extends AutoPlugin {
 
   val logger = ConsoleLogger()
 
