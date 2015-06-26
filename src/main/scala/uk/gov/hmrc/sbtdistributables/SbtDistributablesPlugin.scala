@@ -17,7 +17,8 @@
 package uk.gov.hmrc.sbtdistributables
 
 import java.io.{File, _}
-import java.util.zip.ZipInputStream
+import java.lang.System.currentTimeMillis
+import java.util.zip.{ZipEntry, ZipInputStream}
 
 import org.apache.commons.compress.archivers.tar.TarArchiveOutputStream.LONGFILE_GNU
 import org.apache.commons.compress.archivers.tar.{TarArchiveEntry, TarArchiveOutputStream}
@@ -28,8 +29,6 @@ import sbt.Keys._
 import sbt._
 
 object SbtDistributablesPlugin extends AutoPlugin {
-
-  val logger = ConsoleLogger()
 
   override def trigger = allRequirements
 
@@ -59,7 +58,6 @@ object SbtDistributablesPlugin extends AutoPlugin {
        addArtifact(artifact in distTgz, distTgz)
 
   private def createTgz (targetDir: Types.Id[File], name: Types.Id[String], version: Types.Id[String]): File = {
-
     val extraFiles = extraTgzFiles(name)
 
     val universalTargetDir = new File(targetDir, "universal")
@@ -76,21 +74,40 @@ object SbtDistributablesPlugin extends AutoPlugin {
       outputStream.putArchiveEntry(new TarArchiveEntry(root))
       outputStream.closeArchiveEntry()
 
-      for (extraFile <- extraFiles) {
-        val tarArchiveEntry: TarArchiveEntry = new TarArchiveEntry(root / extraFile._1)
-        val bytes: Array[Byte] = extraFile._2.getBytes("UTF-8")
-        tarArchiveEntry.setSize(bytes.length)
-        outputStream.putArchiveEntry(tarArchiveEntry)
-        copy(new ByteArrayInputStream(bytes), outputStream)
-        outputStream.closeArchiveEntry()
-      }
-
+      addEntries(extraFiles, outputStream, root)
+      copyEntries(inputStream, outputStream, root)
     } finally {
       closeQuietly(inputStream)
       closeQuietly(outputStream)
     }
 
     tgz
+  }
+
+  private def addEntries(extraFiles: Array[(String, String)], outputStream: TarArchiveOutputStream, root: File) {
+    for (extraFile <- extraFiles) {
+      val bytes: Array[Byte] = extraFile._2.getBytes("UTF-8")
+      outputStream.putArchiveEntry(tarArchiveEntry(root, extraFile._1, bytes.length, currentTimeMillis()))
+      copy(new ByteArrayInputStream(bytes), outputStream)
+      outputStream.closeArchiveEntry()
+    }
+  }
+
+  private def copyEntries(inputStream: ZipInputStream, outputStream: TarArchiveOutputStream, root: File) {
+    var inputZipEntry: ZipEntry = inputStream.getNextEntry
+    while (inputZipEntry != null) {
+      outputStream.putArchiveEntry(tarArchiveEntry(root, inputZipEntry.getName, inputZipEntry.getSize, inputZipEntry.getTime))
+      copy(inputStream, outputStream)
+      outputStream.closeArchiveEntry()
+      inputZipEntry = inputStream.getNextEntry
+    }
+  }
+
+  private def tarArchiveEntry(root: File, name: String, size: Long, time: Long): TarArchiveEntry = {
+    val outputTarEntry = new TarArchiveEntry(root / name)
+    outputTarEntry.setSize(size)
+    outputTarEntry.setModTime(time)
+    outputTarEntry
   }
 
   private def extraTgzFiles(name: Types.Id[String]): Array[(String, String)] = {
