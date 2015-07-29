@@ -31,6 +31,7 @@ import sbt._
 object SbtDistributablesPlugin extends AutoPlugin {
 
   override def trigger = allRequirements
+  val logger = ConsoleLogger()
 
   val distZip = com.typesafe.sbt.SbtNativePackager.NativePackagerKeys.dist
   val distTgz = TaskKey[sbt.File]("dist-tgz", "create tgz distributable")
@@ -76,6 +77,7 @@ object SbtDistributablesPlugin extends AutoPlugin {
 
       addEntries(extraFiles, outputStream, root)
       copyEntries(inputStream, outputStream, root)
+      logger.info(s"Your package is ready in $tgz")
     } finally {
       closeQuietly(inputStream)
       closeQuietly(outputStream)
