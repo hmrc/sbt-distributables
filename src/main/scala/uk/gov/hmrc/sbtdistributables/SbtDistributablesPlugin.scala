@@ -33,23 +33,14 @@ object SbtDistributablesPlugin extends AutoPlugin {
   val logger = ConsoleLogger()
 
   lazy val distZip = com.typesafe.sbt.SbtNativePackager.NativePackagerKeys.dist
-  val publishZip = TaskKey[sbt.File]("publish-zip", "publish zip artifact")
   lazy val distTgz = TaskKey[sbt.File]("dist-tgz", "create tgz distributable")
   val publishTgz = TaskKey[sbt.File]("publish-tgz", "publish tgz artifact")
 
-  lazy val publishingSettings : Seq[sbt.Setting[_]] = addArtifact(artifact in publishZip, publishZip) ++ addArtifact(artifact in publishTgz, publishTgz)
+  lazy val publishingSettings : Seq[sbt.Setting[_]] = addArtifact(artifact in publishTgz, publishTgz)
 
   override def projectSettings = Seq(
     distTgz := {
       createTgz(target.value / "universal", name.value, version.value)
-    },
-
-    artifact in publishZip ~= {
-      (art: Artifact) => art.copy(`type` = "zip", extension = "zip")
-    },
-
-    publishZip <<= (target, normalizedName, version) map {
-      (targetDir, id, version) => targetDir / "universal" / s"$id-$version.zip"
     },
 
     artifact in publishTgz ~= {
