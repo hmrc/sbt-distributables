@@ -23,7 +23,6 @@ import java.util.zip.{ZipEntry, ZipInputStream}
 import org.apache.commons.compress.archivers.tar.TarArchiveOutputStream.LONGFILE_GNU
 import org.apache.commons.compress.archivers.tar.{TarArchiveEntry, TarArchiveOutputStream}
 import org.apache.commons.compress.compressors.gzip.GzipCompressorOutputStream
-import org.apache.commons.compress.utils.IOUtils
 import org.apache.commons.compress.utils.IOUtils._
 import sbt.Keys._
 import sbt._
@@ -33,37 +32,43 @@ object SbtDistributablesPlugin extends AutoPlugin {
   override def trigger = allRequirements
   val logger = ConsoleLogger()
 
-  val distZip = com.typesafe.sbt.SbtNativePackager.NativePackagerKeys.dist
-  val distTgz = TaskKey[sbt.File]("dist-tgz", "create tgz distributable")
+  lazy val distZip = com.typesafe.sbt.SbtNativePackager.NativePackagerKeys.dist
+  val publishZip = TaskKey[sbt.File]("publish-zip", "publish zip artifact")
+  lazy val distTgz = TaskKey[sbt.File]("dist-tgz", "create tgz distributable")
+  val publishTgz = TaskKey[sbt.File]("publish-tgz", "publish tgz artifact")
+
+  lazy val publishingSettings : Seq[sbt.Setting[_]] = addArtifact(artifact in publishZip, publishZip) ++ addArtifact(artifact in publishTgz, publishTgz)
 
   override def projectSettings = Seq(
-    artifact in distZip ~= {
+    distTgz := {
+      createTgz(target.value / "universal", name.value, version.value)
+    },
+
+    artifact in publishZip ~= {
       (art: Artifact) => art.copy(`type` = "zip", extension = "zip")
     },
 
-    distZip <<= (target, normalizedName, version) map {
+    publishZip <<= (target, normalizedName, version) map {
       (targetDir, id, version) => targetDir / "universal" / s"$id-$version.zip"
     },
 
-    artifact in distTgz ~= {
+    artifact in publishTgz ~= {
       (art: Artifact) => art.copy(`type` = "zip", extension = "tgz")
     },
 
-    distTgz <<= (target, normalizedName, version) map {
-      createTgz
+    publishTgz <<= (target, normalizedName, version) map {
+      (targetDir, id, version) => targetDir / "universal" / s"$id-$version.tgz"
     },
 
-    distZip <<= distZip dependsOn Keys.`package`,
-    distTgz <<= distTgz dependsOn distZip
-  ) ++ addArtifact(artifact in distZip, distZip) ++
-       addArtifact(artifact in distTgz, distTgz)
+    distTgz <<= distTgz dependsOn distZip,
+    publishLocal <<= publishLocal dependsOn distTgz
+  )
 
-  private def createTgz (targetDir: Types.Id[File], name: Types.Id[String], version: Types.Id[String]): File = {
+  private def createTgz(targetDir: File, name: String, version: String): File = {
     val extraFiles = extraTgzFiles(name)
 
-    val universalTargetDir = new File(targetDir, "universal")
-    val zip = universalTargetDir / s"$name-$version.zip"
-    val tgz = universalTargetDir / s"$name-$version.tgz"
+    val zip = targetDir / s"$name-$version.zip"
+    val tgz = targetDir / s"$name-$version.tgz"
     val root = new File(".")
 
     var inputStream: ZipInputStream = null
@@ -82,7 +87,6 @@ object SbtDistributablesPlugin extends AutoPlugin {
       closeQuietly(inputStream)
       closeQuietly(outputStream)
     }
-
     tgz
   }
 
@@ -112,9 +116,9 @@ object SbtDistributablesPlugin extends AutoPlugin {
     outputTarEntry
   }
 
-  private def extraTgzFiles(name: Types.Id[String]): Array[(String, String)] = {
+  private def extraTgzFiles(name: String) = {
     Array(("Procfile", "web: ./start-docker.sh"),
-          ("start-docker.sh", s"""|#!/bin/sh
+      ("start-docker.sh", s"""|#!/bin/sh
                                   |
                                   |SCRIPT=$$(find . -type f -name $name)
                                   |exec $$SCRIPT \\
