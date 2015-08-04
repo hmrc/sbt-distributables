@@ -51,6 +51,13 @@ object SbtDistributablesPlugin extends AutoPlugin {
       (targetDir, id, version) => targetDir / "universal" / s"$id-$version.tgz"
     },
 
+    publishArtifact in(Test, packageDoc) := false,
+    publishArtifact in(Test, packageSrc) := false,
+    publishArtifact in(Test, packageBin) := false,
+    publishArtifact in(Compile, packageDoc) := false,
+    publishArtifact in(Compile, packageSrc) := false,
+    publishArtifact in(Compile, packageBin) := true,
+
     distTgz <<= distTgz dependsOn distZip,
     publishLocal <<= publishLocal dependsOn distTgz
   )
