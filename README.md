@@ -38,4 +38,7 @@ tester-1.0.0.tgz
       README.md
     Procfile
     start-docker.sh
+    system.properties
 ```
+
+`system.properties` will specify a `java.runtime.version` derived from the `scalacOptions` setting in SBT. 
