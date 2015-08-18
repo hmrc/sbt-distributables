@@ -40,7 +40,7 @@ object SbtDistributablesPlugin extends AutoPlugin {
 
   override def projectSettings = Seq(
     distTgz := {
-      createTgz(target.value / "universal", name.value, version.value)
+      createTgz(target.value / "universal", name.value, version.value, javaRuntimeVersion(scalacOptions.value))
     },
 
     artifact in publishTgz ~= {
@@ -62,8 +62,8 @@ object SbtDistributablesPlugin extends AutoPlugin {
     publishLocal <<= publishLocal dependsOn distTgz
   )
 
-  private def createTgz(targetDir: File, name: String, version: String): File = {
-    val extraFiles = extraTgzFiles(name)
+  private def createTgz(targetDir: File, name: String, version: String, javaRuntimeVersion: String): File = {
+    val extraFiles = extraTgzFiles(name, javaRuntimeVersion)
 
     val zip = targetDir / s"$name-$version.zip"
     val tgz = targetDir / s"$name-$version.tgz"
@@ -114,14 +114,19 @@ object SbtDistributablesPlugin extends AutoPlugin {
     outputTarEntry
   }
 
-  private def extraTgzFiles(name: String) = {
+  private def extraTgzFiles(name: String, javaRuntimeVersion: String) = {
     Array(("Procfile", "web: ./start-docker.sh"),
-      ("start-docker.sh", s"""|#!/bin/sh
+          ("system.properties", s"java.runtime.version=$javaRuntimeVersion"),
+          ("start-docker.sh", s"""|#!/bin/sh
                                   |
                                   |SCRIPT=$$(find . -type f -name $name)
                                   |exec $$SCRIPT \\
                                   |  $$HMRC_CONFIG
                                   |""".stripMargin))
+  }
+
+  private def javaRuntimeVersion(scalacOptions: Seq[String]): String = {
+    if (scalacOptions.contains("-target:jvm-1.8")) "1.8" else "1.7"
   }
 
   private def zipInputStream(zip: File): ZipInputStream = {
