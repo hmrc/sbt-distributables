@@ -88,10 +88,10 @@ object SbtDistributablesPlugin extends AutoPlugin {
     tgz
   }
 
-  private def addEntries(extraFiles: Array[(String, String)], outputStream: TarArchiveOutputStream, root: File) {
+  private def addEntries(extraFiles: Array[(String, String, Option[Int])], outputStream: TarArchiveOutputStream, root: File) {
     for (extraFile <- extraFiles) {
       val bytes: Array[Byte] = extraFile._2.getBytes("UTF-8")
-      outputStream.putArchiveEntry(tarArchiveEntry(root, extraFile._1, bytes.length, currentTimeMillis()))
+      outputStream.putArchiveEntry(tarArchiveEntry(root, extraFile._1, bytes.length, currentTimeMillis(), extraFile._3))
       copy(new ByteArrayInputStream(bytes), outputStream)
       outputStream.closeArchiveEntry()
     }
@@ -100,29 +100,30 @@ object SbtDistributablesPlugin extends AutoPlugin {
   private def copyEntries(inputStream: ZipInputStream, outputStream: TarArchiveOutputStream, root: File) {
     var inputZipEntry: ZipEntry = inputStream.getNextEntry
     while (inputZipEntry != null) {
-      outputStream.putArchiveEntry(tarArchiveEntry(root, inputZipEntry.getName, inputZipEntry.getSize, inputZipEntry.getTime))
+      outputStream.putArchiveEntry(tarArchiveEntry(root, inputZipEntry.getName, inputZipEntry.getSize, inputZipEntry.getTime, None))
       copy(inputStream, outputStream)
       outputStream.closeArchiveEntry()
       inputZipEntry = inputStream.getNextEntry
     }
   }
 
-  private def tarArchiveEntry(root: File, name: String, size: Long, time: Long): TarArchiveEntry = {
+  private def tarArchiveEntry(root: File, name: String, size: Long, time: Long, mode: Option[Int]): TarArchiveEntry = {
     val outputTarEntry = new TarArchiveEntry(root / name)
     outputTarEntry.setSize(size)
     outputTarEntry.setModTime(time)
+    mode.foreach(m => outputTarEntry.setMode(m))
     outputTarEntry
   }
 
   private def extraTgzFiles(name: String, javaRuntimeVersion: String) = {
-    Array(("Procfile", "web: ./start-docker.sh"),
-          ("system.properties", s"java.runtime.version=$javaRuntimeVersion"),
+    Array(("Procfile", "web: ./start-docker.sh", None),
+          ("system.properties", s"java.runtime.version=$javaRuntimeVersion", None),
           ("start-docker.sh", s"""|#!/bin/sh
                                   |
                                   |SCRIPT=$$(find . -type f -name $name)
                                   |exec $$SCRIPT \\
                                   |  $$HMRC_CONFIG
-                                  |""".stripMargin))
+                                  |""".stripMargin, Some(493))) // 0755
   }
 
   private def javaRuntimeVersion(scalacOptions: Seq[String]): String = {
