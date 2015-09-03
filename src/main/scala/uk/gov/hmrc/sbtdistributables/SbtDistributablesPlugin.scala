@@ -36,6 +36,8 @@ object SbtDistributablesPlugin extends AutoPlugin {
   lazy val distTgz = TaskKey[sbt.File]("dist-tgz", "create tgz distributable")
   val publishTgz = TaskKey[sbt.File]("publish-tgz", "publish tgz artifact")
 
+  private val FILE_MODE_775 = 493
+
   lazy val publishingSettings : Seq[sbt.Setting[_]] = addArtifact(artifact in publishTgz, publishTgz)
 
   override def projectSettings = Seq(
@@ -62,11 +64,11 @@ object SbtDistributablesPlugin extends AutoPlugin {
     publishLocal <<= publishLocal dependsOn distTgz
   )
 
-  private def createTgz(targetDir: File, name: String, version: String, javaRuntimeVersion: String): File = {
-    val extraFiles = extraTgzFiles(name, javaRuntimeVersion)
+  private def createTgz(targetDir: File, artifactName: String, version: String, javaRuntimeVersion: String): File = {
+    val extraFiles = extraTgzFiles(artifactName, javaRuntimeVersion)
 
-    val zip = targetDir / s"$name-$version.zip"
-    val tgz = targetDir / s"$name-$version.tgz"
+    val zip = targetDir / s"$artifactName-$version.zip"
+    val tgz = targetDir / s"$artifactName-$version.tgz"
     val root = new File(".")
 
     var inputStream: ZipInputStream = null
@@ -79,7 +81,7 @@ object SbtDistributablesPlugin extends AutoPlugin {
       outputStream.closeArchiveEntry()
 
       addEntries(extraFiles, outputStream, root)
-      copyEntries(inputStream, outputStream, root)
+      copyEntries(inputStream, outputStream, root, artifactName)
       logger.info(s"Your package is ready in $tgz")
     } finally {
       closeQuietly(inputStream)
@@ -97,13 +99,21 @@ object SbtDistributablesPlugin extends AutoPlugin {
     }
   }
 
-  private def copyEntries(inputStream: ZipInputStream, outputStream: TarArchiveOutputStream, root: File) {
+  private def copyEntries(inputStream: ZipInputStream, outputStream: TarArchiveOutputStream, root: File, artifactName: String) {
     var inputZipEntry: ZipEntry = inputStream.getNextEntry
     while (inputZipEntry != null) {
-      outputStream.putArchiveEntry(tarArchiveEntry(root, inputZipEntry.getName, inputZipEntry.getSize, inputZipEntry.getTime, None))
+      outputStream.putArchiveEntry(tarArchiveEntry(root, inputZipEntry.getName, inputZipEntry.getSize, inputZipEntry.getTime, getTarEntryMode(inputZipEntry.getName, artifactName)))
       copy(inputStream, outputStream)
       outputStream.closeArchiveEntry()
       inputZipEntry = inputStream.getNextEntry
+    }
+  }
+
+  private def getTarEntryMode(zipEntryName: String, artifactName: String) : Option[Int] = {
+    if(zipEntryName.endsWith(s"/bin/$artifactName")) {
+      Some(FILE_MODE_775)
+    } else {
+      None
     }
   }
 
@@ -115,15 +125,15 @@ object SbtDistributablesPlugin extends AutoPlugin {
     outputTarEntry
   }
 
-  private def extraTgzFiles(name: String, javaRuntimeVersion: String) = {
+  private def extraTgzFiles(artifactName: String, javaRuntimeVersion: String) = {
     Array(("Procfile", "web: ./start-docker.sh", None),
           ("system.properties", s"java.runtime.version=$javaRuntimeVersion", None),
           ("start-docker.sh", s"""|#!/bin/sh
                                   |
-                                  |SCRIPT=$$(find . -type f -name $name)
+                                  |SCRIPT=$$(find . -type f -name $artifactName)
                                   |exec $$SCRIPT \\
                                   |  $$HMRC_CONFIG
-                                  |""".stripMargin, Some(493))) // 0755
+                                  |""".stripMargin, Some(FILE_MODE_775)))
   }
 
   private def javaRuntimeVersion(scalacOptions: Seq[String]): String = {
