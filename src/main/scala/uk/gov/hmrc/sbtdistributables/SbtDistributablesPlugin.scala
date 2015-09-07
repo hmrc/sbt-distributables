@@ -65,7 +65,7 @@ object SbtDistributablesPlugin extends AutoPlugin {
   )
 
   private def createTgz(targetDir: File, artifactName: String, version: String, javaRuntimeVersion: String): File = {
-    val extraFiles = extraTgzFiles(artifactName, javaRuntimeVersion)
+    val extraFiles = extraTgzFiles(javaRuntimeVersion)
 
     val zip = targetDir / s"$artifactName-$version.zip"
     val tgz = targetDir / s"$artifactName-$version.tgz"
@@ -125,15 +125,8 @@ object SbtDistributablesPlugin extends AutoPlugin {
     outputTarEntry
   }
 
-  private def extraTgzFiles(artifactName: String, javaRuntimeVersion: String) = {
-    Array(("Procfile", "web: ./start-docker.sh", None),
-          ("system.properties", s"java.runtime.version=$javaRuntimeVersion", None),
-          ("start-docker.sh", s"""|#!/bin/sh
-                                  |
-                                  |SCRIPT=$$(find . -type f -name $artifactName)
-                                  |exec $$SCRIPT \\
-                                  |  $$HMRC_CONFIG
-                                  |""".stripMargin, Some(FILE_MODE_775)))
+  private def extraTgzFiles(javaRuntimeVersion: String): Array[(String, String, Option[Int])] = {
+    Array(("system.properties", s"java.runtime.version=$javaRuntimeVersion", None))
   }
 
   private def javaRuntimeVersion(scalacOptions: Seq[String]): String = {
