@@ -33,7 +33,7 @@ object SbtDistributablesPlugin extends AutoPlugin {
   val logger = ConsoleLogger()
 
   lazy val distZip = com.typesafe.sbt.SbtNativePackager.NativePackagerKeys.dist
-  lazy val distTgz = TaskKey[sbt.File]("dist-tgz", "create tgz distributable")
+  lazy val distTgzTask = TaskKey[sbt.File]("dist-tgz", "create tgz distributable")
   val publishTgz = TaskKey[sbt.File]("publish-tgz", "publish tgz artifact")
 
   private val FILE_MODE_775 = 493
@@ -41,7 +41,7 @@ object SbtDistributablesPlugin extends AutoPlugin {
   lazy val publishingSettings : Seq[sbt.Setting[_]] = addArtifact(artifact in publishTgz, publishTgz)
 
   override def projectSettings = Seq(
-    distTgz := {
+    distTgzTask := {
       createTgz(target.value / "universal", name.value, version.value, javaRuntimeVersion(scalacOptions.value))
     },
 
@@ -60,8 +60,8 @@ object SbtDistributablesPlugin extends AutoPlugin {
     publishArtifact in(Compile, packageSrc) := false,
     publishArtifact in(Compile, packageBin) := true,
 
-    distTgz <<= distTgz dependsOn distZip,
-    publishLocal <<= publishLocal dependsOn distTgz
+    distTgzTask <<= distTgzTask dependsOn distZip,
+    publishLocal <<= publishLocal dependsOn distTgzTask
   )
 
   private def createTgz(targetDir: File, artifactName: String, version: String, javaRuntimeVersion: String): File = {
