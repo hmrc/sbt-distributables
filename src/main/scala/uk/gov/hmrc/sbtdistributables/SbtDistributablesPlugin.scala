@@ -20,7 +20,7 @@ import java.io.{File, _}
 import java.lang.System.currentTimeMillis
 import java.util.zip.{ZipEntry, ZipInputStream}
 
-import org.apache.commons.compress.archivers.tar.TarArchiveOutputStream.LONGFILE_GNU
+import org.apache.commons.compress.archivers.tar.TarArchiveOutputStream._
 import org.apache.commons.compress.archivers.tar.{TarArchiveEntry, TarArchiveOutputStream}
 import org.apache.commons.compress.compressors.gzip.GzipCompressorOutputStream
 import org.apache.commons.compress.utils.IOUtils._
@@ -36,13 +36,16 @@ object SbtDistributablesPlugin extends AutoPlugin {
   lazy val distTgzTask = TaskKey[sbt.File]("dist-tgz", "create tgz distributable")
   val publishTgz = TaskKey[sbt.File]("publish-tgz", "publish tgz artifact")
 
+  lazy val extraFiles = SettingKey[Seq[File]]("extraFiles", "Extra files to be added to the tgz")
+
   private val FILE_MODE_775 = 493
 
   lazy val publishingSettings : Seq[sbt.Setting[_]] = addArtifact(artifact in publishTgz, publishTgz)
 
   override def projectSettings = Seq(
+    extraFiles := Seq.empty[File],
     distTgzTask := {
-      createTgz(target.value / "universal", name.value, version.value, javaRuntimeVersion(scalacOptions.value))
+      createTgz(target.value / "universal", name.value, version.value, javaRuntimeVersion(scalacOptions.value), extraFiles.value)
     },
 
     artifact in publishTgz ~= {
@@ -64,8 +67,8 @@ object SbtDistributablesPlugin extends AutoPlugin {
     publishLocal <<= publishLocal dependsOn distTgzTask
   )
 
-  private def createTgz(targetDir: File, artifactName: String, version: String, javaRuntimeVersion: String): File = {
-    val extraFiles = extraTgzFiles(javaRuntimeVersion)
+  private def createTgz(targetDir: File, artifactName: String, version: String, javaRuntimeVersion: String, extraFiles: Seq[File]): File = {
+    val externalTgzFiles = extraTgzFiles(javaRuntimeVersion)
 
     val zip = targetDir / s"$artifactName-$version.zip"
     val tgz = targetDir / s"$artifactName-$version.tgz"
@@ -80,7 +83,8 @@ object SbtDistributablesPlugin extends AutoPlugin {
       outputStream.putArchiveEntry(new TarArchiveEntry(root))
       outputStream.closeArchiveEntry()
 
-      addEntries(extraFiles, outputStream, root)
+      addEntries(outputStream, root, extraFiles)
+      addEntries(outputStream, root, externalTgzFiles)
       copyEntries(inputStream, outputStream, root, artifactName)
       logger.info(s"Your package is ready in $tgz")
     } finally {
@@ -90,13 +94,24 @@ object SbtDistributablesPlugin extends AutoPlugin {
     tgz
   }
 
-  private def addEntries(extraFiles: Array[(String, String, Option[Int])], outputStream: TarArchiveOutputStream, root: File) {
+  private def addEntries(outputStream: TarArchiveOutputStream, root: File, extraFiles: Array[(String, String, Option[Int])]) =
     for (extraFile <- extraFiles) {
-      val bytes: Array[Byte] = extraFile._2.getBytes("UTF-8")
-      outputStream.putArchiveEntry(tarArchiveEntry(root, extraFile._1, bytes.length, currentTimeMillis(), extraFile._3))
-      copy(new ByteArrayInputStream(bytes), outputStream)
-      outputStream.closeArchiveEntry()
+      val bytes = extraFile._2.getBytes("UTF-8")
+      addEntry(outputStream, root, new ByteArrayInputStream(bytes), extraFile._1, bytes.length)
     }
+
+
+  private def addEntries(outputStream: TarArchiveOutputStream, root: File, extraFiles: Seq[File]) =
+    extraFiles.foreach { extraFile =>
+      val stream = new FileInputStream(extraFile.getAbsoluteFile)
+      addEntry(outputStream, root, stream, extraFile.name, extraFile.getAbsoluteFile.length)
+    }
+
+
+  private def addEntry(outputStream: TarArchiveOutputStream, root: File, stream: InputStream, name: String, size: Long) = {
+    outputStream.putArchiveEntry(tarArchiveEntry(root, name, size, currentTimeMillis(), None))
+    copy(stream, outputStream)
+    outputStream.closeArchiveEntry()
   }
 
   private def copyEntries(inputStream: ZipInputStream, outputStream: TarArchiveOutputStream, root: File, artifactName: String) {
@@ -109,8 +124,8 @@ object SbtDistributablesPlugin extends AutoPlugin {
     }
   }
 
-  private def getTarEntryMode(zipEntryName: String, artifactName: String) : Option[Int] = {
-    if(zipEntryName.endsWith(s"/bin/$artifactName")) {
+  private def getTarEntryMode(zipEntryName: String, artifactName: String): Option[Int] = {
+    if (zipEntryName.endsWith(s"/bin/$artifactName")) {
       Some(FILE_MODE_775)
     } else {
       None

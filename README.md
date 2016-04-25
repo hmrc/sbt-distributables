@@ -22,6 +22,10 @@ In your `project/FrontendBuild.scala` or `project/MicroserviceBuild.scala`
 1. Add the line ```.enablePlugins(SbtDistributablesPlugin)``` to enable artifact creation
 2. Add the line ```.settings(SbtDistributablePlugin.publisherSettings)``` to enable artifact publication
 
+Optional settings:
+
+1. Add the line ```.settings(extraFiles := Seq(new File("<PATH-TO-FILE>")))``` to add extra files to the archive (path must be relative)
+
 What it does
 ------------
 
