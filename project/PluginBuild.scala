@@ -29,7 +29,7 @@ object PluginBuild extends Build {
       sbtPlugin := true,
       targetJvm := "jvm-1.7",
       organization := "uk.gov.hmrc",
-      scalaVersion := "2.10.4",
+      scalaVersion := "2.10.6",
       resolvers += Resolver.url(
         "sbt-plugin-releases",
         url("https://dl.bintray.com/content/sbt/sbt-plugin-releases"))(Resolver.ivyStylePatterns),
