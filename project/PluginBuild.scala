@@ -33,6 +33,7 @@ object PluginBuild extends Build {
       resolvers += Resolver.url(
         "sbt-plugin-releases",
         url("https://dl.bintray.com/content/sbt/sbt-plugin-releases"))(Resolver.ivyStylePatterns),
+      resolvers += "Typesafe Releases" at "http://repo.typesafe.com/typesafe/releases/",
       libraryDependencies ++= Seq(
         "org.apache.commons" % "commons-compress" % "1.9",
         "org.scalatest" %% "scalatest" % "2.2.4" % "test",
