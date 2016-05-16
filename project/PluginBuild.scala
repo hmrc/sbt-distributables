@@ -38,5 +38,5 @@ object PluginBuild extends Build {
         "org.scalatest" %% "scalatest" % "2.2.4" % "test",
         "org.pegdown" % "pegdown" % "1.4.2" % "test"
       )
-    ).settings(addSbtPlugin("com.typesafe.sbt" %% "sbt-native-packager" % "0.7.2"))
+    ).settings(addSbtPlugin("com.typesafe.sbt" %% "sbt-native-packager" % "1.1.0"))
 }
