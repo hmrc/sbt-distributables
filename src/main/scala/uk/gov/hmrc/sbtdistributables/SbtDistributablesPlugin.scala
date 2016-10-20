@@ -32,7 +32,7 @@ object SbtDistributablesPlugin extends AutoPlugin {
   override def trigger = allRequirements
   val logger = ConsoleLogger()
 
-  lazy val distZip = com.typesafe.sbt.SbtNativePackager.NativePackagerKeys.dist
+  lazy val distZip = com.typesafe.sbt.SbtNativePackager.autoImport.NativePackagerKeys.dist
   lazy val distTgzTask = TaskKey[sbt.File]("dist-tgz", "create tgz distributable")
   val publishTgz = TaskKey[sbt.File]("publish-tgz", "publish tgz artifact")
 
