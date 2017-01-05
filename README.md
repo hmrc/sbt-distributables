@@ -20,7 +20,7 @@ where 'x.x.x' is the latest release as advertised above.
 In your `project/FrontendBuild.scala` or `project/MicroserviceBuild.scala`
 
 1. Add the line ```.enablePlugins(SbtDistributablesPlugin)``` to enable artifact creation
-2. Add the line ```.settings(SbtDistributablePlugin.publisherSettings)``` to enable artifact publication
+2. Add the line ```.settings(SbtDistributablesPlugin.publishingSettings)``` to enable artifact publication
 
 Optional settings:
 
