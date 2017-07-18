@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 HM Revenue & Customs
+ * Copyright 2017 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -67,7 +67,7 @@ object SbtDistributablesPlugin extends AutoPlugin {
     publishLocal <<= publishLocal dependsOn distTgzTask
   )
 
-  private def createTgz(targetDir: File, artifactName: String, version: String, javaRuntimeVersion: String, extraFiles: Seq[File]): File = {
+  def createTgz(targetDir: File, artifactName: String, version: String, javaRuntimeVersion: String, extraFiles: Seq[File]): File = {
     val externalTgzFiles = extraTgzFiles(javaRuntimeVersion)
 
     val zip = targetDir / s"$artifactName-$version.zip"
@@ -144,7 +144,7 @@ object SbtDistributablesPlugin extends AutoPlugin {
     Array(("system.properties", s"java.runtime.version=$javaRuntimeVersion", None))
   }
 
-  private def javaRuntimeVersion(scalacOptions: Seq[String]): String = {
+  def javaRuntimeVersion(scalacOptions: Seq[String]): String = {
     if (scalacOptions.contains("-target:jvm-1.8")) "1.8" else "1.7"
   }
 
