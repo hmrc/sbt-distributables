@@ -65,7 +65,7 @@ object SbtDistributablesPlugin extends AutoPlugin {
 
     distTgzTask <<= distTgzTask dependsOn distZip,
     publishLocal <<= publishLocal dependsOn distTgzTask
-  )
+  ) ++ publishingSettings
 
   private def createTgz(targetDir: File, artifactName: String, version: String, javaRuntimeVersion: String, extraFiles: Seq[File]): File = {
     val externalTgzFiles = extraTgzFiles(javaRuntimeVersion)
