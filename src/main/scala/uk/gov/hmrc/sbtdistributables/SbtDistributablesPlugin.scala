@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 HM Revenue & Customs
+ * Copyright 2017 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -38,7 +38,7 @@ object SbtDistributablesPlugin extends AutoPlugin {
 
   lazy val extraFiles = SettingKey[Seq[File]]("extraFiles", "Extra files to be added to the tgz")
 
-  private val FILE_MODE_775 = 493
+  private val FILE_MODE_755 = 493
 
   lazy val publishingSettings : Seq[sbt.Setting[_]] = addArtifact(artifact in publishTgz, publishTgz)
 
@@ -126,7 +126,7 @@ object SbtDistributablesPlugin extends AutoPlugin {
 
   private def getTarEntryMode(zipEntryName: String, artifactName: String): Option[Int] = {
     if (zipEntryName.endsWith(s"/bin/$artifactName")) {
-      Some(FILE_MODE_775)
+      Some(FILE_MODE_755)
     } else {
       None
     }
