@@ -29,7 +29,7 @@ import sbt._
 
 object SbtDistributablesPlugin extends AutoPlugin {
 
-  override def trigger = allRequirements
+  override def trigger: PluginTrigger = noTrigger
   val logger = ConsoleLogger()
 
   lazy val distZip = com.typesafe.sbt.SbtNativePackager.autoImport.NativePackagerKeys.dist
