@@ -51,12 +51,10 @@ object SbtDistributablesPlugin extends AutoPlugin {
     },
 
     artifact in publishTgz ~= {
-      (art: Artifact) => art.copy(`type` = "zip", extension = "tgz")
+      art: Artifact => art.withType("zip").withExtension("tgz")
     },
 
-    publishTgz <<= (target, normalizedName, version) map {
-      (targetDir, id, version) => targetDir / "universal" / s"$id-$version.tgz"
-    },
+    publishTgz := target.value / "universal" / s"${normalizedName.value}-${version.value}.tgz",
 
     publishArtifact in(Test, packageDoc) := false,
     publishArtifact in(Test, packageSrc) := false,
@@ -65,8 +63,8 @@ object SbtDistributablesPlugin extends AutoPlugin {
     publishArtifact in(Compile, packageSrc) := false,
     publishArtifact in(Compile, packageBin) := true,
 
-    distTgzTask <<= distTgzTask dependsOn distZip,
-    publishLocal <<= publishLocal dependsOn distTgzTask
+    distTgzTask := (distTgzTask dependsOn distZip).value,
+    publishLocal := (publishLocal dependsOn distTgzTask).value
   ) ++ publishingSettings
 
   private def createTgz(targetDir: File, artifactName: String, version: String, javaRuntimeVersion: String, extraFiles: Seq[File], executableFilesInTar: Seq[String]): File = {
