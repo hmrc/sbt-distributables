@@ -49,17 +49,13 @@ object SbtDistributablesPlugin extends AutoPlugin {
   override def projectSettings: Seq[Setting[_]] = Seq(
     extraFiles           := Seq.empty[File],
     executableFilesInTar := Seq.empty[String],
-    distTgzTask          := { println("in distTgzTask");
-                              createTgz(
-                                target.value / "universal" / s"${name.value}-${version.value}.zip",
-                                target.value / "universal" / s"${name.value}-${version.value}.tgz",
-                                name.value,
-                                version.value,
-                                javaRuntimeVersion(scalacOptions.value),
-                                extraFiles.value,
-                                executableFilesInTar.value
-                              )
-                            },
+    distTgzTask          := createTgz(
+                              target.value / "universal" / s"${name.value}-${version.value}.zip",
+                              target.value / "universal" / s"${name.value}-${version.value}.tgz",
+                              name.value,
+                              extraFiles.value,
+                              executableFilesInTar.value
+                            ),
 
     publishTgz           := target.value / "universal" / s"${name.value}-${version.value}.tgz",
     publishTgz / artifact ~= { art: Artifact => art.withType("zip").withExtension("tgz") },
@@ -79,13 +75,9 @@ object SbtDistributablesPlugin extends AutoPlugin {
     zip                 : File,
     tgz                 : File,
     artifactName        : String,
-    version             : String,
-    javaRuntimeVersion  : String,
     extraFiles          : Seq[File],
     executableFilesInTar: Seq[String]
   ): File = {
-    val externalTgzFiles = extraTgzFiles(javaRuntimeVersion)
-
     val root = new File(".")
 
     var inputStream: ZipInputStream = null
@@ -98,7 +90,6 @@ object SbtDistributablesPlugin extends AutoPlugin {
       outputStream.closeArchiveEntry()
 
       addEntries(outputStream, root, extraFiles)
-      addEntries(outputStream, root, externalTgzFiles)
       copyEntries(inputStream, outputStream, root, artifactName, executableFilesInTar)
       logger.info(s"Your package is ready in $tgz")
     } finally {
@@ -108,23 +99,11 @@ object SbtDistributablesPlugin extends AutoPlugin {
     tgz
   }
 
-  private def addEntries(
-    outputStream: TarArchiveOutputStream,
-    root        : File,
-    extraFiles  : Array[(String, String, Option[Int])]
-  ): Unit =
-    for (extraFile <- extraFiles) {
-      val bytes = extraFile._2.getBytes("UTF-8")
-      addEntry(outputStream, root, new ByteArrayInputStream(bytes), extraFile._1, bytes.length)
-    }
-
-
   private def addEntries(outputStream: TarArchiveOutputStream, root: File, extraFiles: Seq[File]): Unit =
     extraFiles.foreach { extraFile =>
       val stream = new FileInputStream(extraFile.getAbsoluteFile)
       addEntry(outputStream, root, stream, extraFile.name, extraFile.getAbsoluteFile.length)
     }
-
 
   private def addEntry(
     outputStream: TarArchiveOutputStream,
@@ -175,12 +154,6 @@ object SbtDistributablesPlugin extends AutoPlugin {
     mode.foreach(m => outputTarEntry.setMode(m))
     outputTarEntry
   }
-
-  private def extraTgzFiles(javaRuntimeVersion: String): Array[(String, String, Option[Int])] =
-    Array(("system.properties", s"java.runtime.version=$javaRuntimeVersion", None))
-
-  private def javaRuntimeVersion(scalacOptions: Seq[String]): String =
-    if (scalacOptions.contains("-target:jvm-1.8")) "1.8" else "1.7"
 
   private def zipInputStream(zip: File): ZipInputStream =
     new ZipInputStream(new BufferedInputStream(new FileInputStream(zip)))
