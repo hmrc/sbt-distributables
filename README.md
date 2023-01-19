@@ -1,6 +1,7 @@
 # sbt-distributables
 
-[![Join the chat at https://gitter.im/hmrc/sbt-distributables](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/hmrc/sbt-distributables?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge) [![Apache-2.0 license](http://img.shields.io/badge/license-Apache-brightgreen.svg)](http://www.apache.org/licenses/LICENSE-2.0.html) 
+![](https://img.shields.io/github/v/release/hmrc/sbt-distributables)
+[![Apache-2.0 license](http://img.shields.io/badge/license-Apache-brightgreen.svg)](http://www.apache.org/licenses/LICENSE-2.0.html)
 
 An SBT plugin to create then publish .tgz artifacts
 
@@ -9,28 +10,29 @@ Usage
 
 ### Sbt 1.x
 
-Since major version 2, this plugin is cross compiled for sbt 1.x (specifically 1.3.4).
+The library has supported sbt 1.x since version 2.0.0 and has dropped support for sbt 0.13 since 2.2.0
 
 | Sbt version | Plugin version |
 | ----------- | -------------- |
-| `0.13.x`    | `any`          |
-| `>= 1.x`    | `>= 2.x`       |
+| `>= 1.x`    | `>= 2.0.0`     |
+| `0.13.x`    | `<= 2.1.0`     |
+
 
 
 In your `project/plugins.sbt` file:
-```
-resolvers += Resolver.url("hmrc-sbt-plugin-releases",
-  url("https://dl.bintray.com/hmrc/sbt-plugin-releases"))(Resolver.ivyStylePatterns)
+
+```scala
+resolvers += MavenRepository("HMRC-open-artefacts-maven2", "https://open.artefacts.tax.service.gov.uk/maven2")
+resolvers += Resolver.url("HMRC-open-artefacts-ivy2", url("https://open.artefacts.tax.service.gov.uk/ivy2"))(Resolver.ivyStylePatterns)
 
 addSbtPlugin("uk.gov.hmrc" % "sbt-distributables" % "x.x.x")
 ```
 
 where 'x.x.x' is the latest release as advertised above.
 
-In your `project/FrontendBuild.scala` or `project/MicroserviceBuild.scala`
+In your `build.sbt`
 
 1. Add the line ```.enablePlugins(SbtDistributablesPlugin)``` to enable artifact creation
-2. Add the line ```.settings(SbtDistributablesPlugin.publishingSettings)``` to enable artifact publication
 
 Optional settings:
 
@@ -55,4 +57,4 @@ tester-1.0.0.tgz
     system.properties
 ```
 
-`system.properties` will specify a `java.runtime.version` derived from the `scalacOptions` setting in SBT. 
+`system.properties` will specify a `java.runtime.version` derived from the `scalacOptions` setting in SBT.

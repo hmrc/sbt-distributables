@@ -30,31 +30,39 @@ import sbt._
 object SbtDistributablesPlugin extends AutoPlugin {
 
   override def trigger: PluginTrigger = noTrigger
+
   val logger = ConsoleLogger()
 
-  lazy val distZip = com.typesafe.sbt.SbtNativePackager.autoImport.NativePackagerKeys.dist
-  lazy val distTgzTask = TaskKey[sbt.File]("dist-tgz", "create tgz distributable")
-  val publishTgz = TaskKey[sbt.File]("publish-tgz", "publish tgz artifact")
-
-  lazy val extraFiles = SettingKey[Seq[File]]("extraFiles", "Extra files to be added to the tgz")
+  lazy val distZip              = com.typesafe.sbt.SbtNativePackager.autoImport.NativePackagerKeys.dist
+  lazy val distTgzTask          = TaskKey[sbt.File]("distTgz", "create tgz distributable")
+  lazy val extraFiles           = SettingKey[Seq[File]]("extraFiles", "Extra files to be added to the tgz")
   lazy val executableFilesInTar = SettingKey[Seq[String]]("executableFilesInTar", "Files to made executable in tar")
+
+  val publishTgz = TaskKey[sbt.File]("publishTgz", "publish tgz artifact")
 
   private val FILE_MODE_775 = 493
 
-  lazy val publishingSettings : Seq[sbt.Setting[_]] = addArtifact(publishTgz / artifact , publishTgz)
+  @deprecated("publishingSettings is not needed", "1.0.2")
+  lazy val publishingSettings: Seq[sbt.Setting[_]] = Seq.empty
 
-  override def projectSettings = Seq(
-    extraFiles := Seq.empty[File],
+
+  override def projectSettings: Seq[Setting[_]] = Seq(
+    extraFiles           := Seq.empty[File],
     executableFilesInTar := Seq.empty[String],
-    distTgzTask := {
-      createTgz(target.value / "universal", name.value, version.value, javaRuntimeVersion(scalacOptions.value), extraFiles.value, executableFilesInTar.value)
-    },
+    distTgzTask          := { println("in distTgzTask");
+                              createTgz(
+                                target.value / "universal" / s"${name.value}-${version.value}.zip",
+                                target.value / "universal" / s"${name.value}-${version.value}.tgz",
+                                name.value,
+                                version.value,
+                                javaRuntimeVersion(scalacOptions.value),
+                                extraFiles.value,
+                                executableFilesInTar.value
+                              )
+                            },
 
-    publishTgz / artifact ~= {
-      art: Artifact => art.withType("zip").withExtension("tgz")
-    },
-
-    publishTgz := target.value / "universal" / s"${normalizedName.value}-${version.value}.tgz",
+    publishTgz           := target.value / "universal" / s"${name.value}-${version.value}.tgz",
+    publishTgz / artifact ~= { art: Artifact => art.withType("zip").withExtension("tgz") },
 
     Test    / packageDoc / publishArtifact := false,
     Test    / packageSrc / publishArtifact := false,
@@ -63,12 +71,13 @@ object SbtDistributablesPlugin extends AutoPlugin {
     Compile / packageSrc / publishArtifact := false,
     Compile / packageBin / publishArtifact := true,
 
-    distTgzTask := (distTgzTask dependsOn distZip).value,
-    publishLocal := (publishLocal dependsOn distTgzTask).value
-  ) ++ publishingSettings
+    distTgzTask  := (distTgzTask .dependsOn(distZip    )).value,
+    publishLocal := (publishLocal.dependsOn(distTgzTask)).value
+  ) ++ addArtifact(publishTgz / artifact, publishTgz)
 
   private def createTgz(
-    targetDir           : File,
+    zip                 : File,
+    tgz                 : File,
     artifactName        : String,
     version             : String,
     javaRuntimeVersion  : String,
@@ -77,8 +86,6 @@ object SbtDistributablesPlugin extends AutoPlugin {
   ): File = {
     val externalTgzFiles = extraTgzFiles(javaRuntimeVersion)
 
-    val zip = targetDir / s"$artifactName-$version.zip"
-    val tgz = targetDir / s"$artifactName-$version.tgz"
     val root = new File(".")
 
     var inputStream: ZipInputStream = null
