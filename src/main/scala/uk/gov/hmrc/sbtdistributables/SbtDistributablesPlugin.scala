@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 HM Revenue & Customs
+ * Copyright 2023 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,48 +30,54 @@ import sbt._
 object SbtDistributablesPlugin extends AutoPlugin {
 
   override def trigger: PluginTrigger = noTrigger
+
   val logger = ConsoleLogger()
 
-  lazy val distZip = com.typesafe.sbt.SbtNativePackager.autoImport.NativePackagerKeys.dist
-  lazy val distTgzTask = TaskKey[sbt.File]("dist-tgz", "create tgz distributable")
-  val publishTgz = TaskKey[sbt.File]("publish-tgz", "publish tgz artifact")
-
-  lazy val extraFiles = SettingKey[Seq[File]]("extraFiles", "Extra files to be added to the tgz")
+  lazy val distZip              = com.typesafe.sbt.SbtNativePackager.autoImport.NativePackagerKeys.dist
+  lazy val distTgzTask          = TaskKey[sbt.File]("distTgz", "create tgz distributable")
+  lazy val extraFiles           = SettingKey[Seq[File]]("extraFiles", "Extra files to be added to the tgz")
   lazy val executableFilesInTar = SettingKey[Seq[String]]("executableFilesInTar", "Files to made executable in tar")
+
+  val publishTgz = TaskKey[sbt.File]("publishTgz", "publish tgz artifact")
 
   private val FILE_MODE_775 = 493
 
-  lazy val publishingSettings : Seq[sbt.Setting[_]] = addArtifact(artifact in publishTgz, publishTgz)
+  @deprecated("publishingSettings is not needed", "1.0.2")
+  lazy val publishingSettings: Seq[sbt.Setting[_]] = Seq.empty
 
-  override def projectSettings = Seq(
-    extraFiles := Seq.empty[File],
+
+  override def projectSettings: Seq[Setting[_]] = Seq(
+    extraFiles           := Seq.empty[File],
     executableFilesInTar := Seq.empty[String],
-    distTgzTask := {
-      createTgz(target.value / "universal", name.value, version.value, javaRuntimeVersion(scalacOptions.value), extraFiles.value, executableFilesInTar.value)
-    },
+    distTgzTask          := createTgz(
+                              target.value / "universal" / s"${name.value}-${version.value}.zip",
+                              target.value / "universal" / s"${name.value}-${version.value}.tgz",
+                              name.value,
+                              extraFiles.value,
+                              executableFilesInTar.value
+                            ),
 
-    artifact in publishTgz ~= {
-      art: Artifact => art.withType("zip").withExtension("tgz")
-    },
+    publishTgz           := target.value / "universal" / s"${name.value}-${version.value}.tgz",
+    publishTgz / artifact ~= { art: Artifact => art.withType("zip").withExtension("tgz") },
 
-    publishTgz := target.value / "universal" / s"${normalizedName.value}-${version.value}.tgz",
+    Test    / packageDoc / publishArtifact := false,
+    Test    / packageSrc / publishArtifact := false,
+    Test    / packageBin / publishArtifact := false,
+    Compile / packageDoc / publishArtifact := false,
+    Compile / packageSrc / publishArtifact := false,
+    Compile / packageBin / publishArtifact := true,
 
-    publishArtifact in(Test, packageDoc) := false,
-    publishArtifact in(Test, packageSrc) := false,
-    publishArtifact in(Test, packageBin) := false,
-    publishArtifact in(Compile, packageDoc) := false,
-    publishArtifact in(Compile, packageSrc) := false,
-    publishArtifact in(Compile, packageBin) := true,
+    distTgzTask  := (distTgzTask .dependsOn(distZip    )).value,
+    publishLocal := (publishLocal.dependsOn(distTgzTask)).value
+  ) ++ addArtifact(publishTgz / artifact, publishTgz)
 
-    distTgzTask := (distTgzTask dependsOn distZip).value,
-    publishLocal := (publishLocal dependsOn distTgzTask).value
-  ) ++ publishingSettings
-
-  private def createTgz(targetDir: File, artifactName: String, version: String, javaRuntimeVersion: String, extraFiles: Seq[File], executableFilesInTar: Seq[String]): File = {
-    val externalTgzFiles = extraTgzFiles(javaRuntimeVersion)
-
-    val zip = targetDir / s"$artifactName-$version.zip"
-    val tgz = targetDir / s"$artifactName-$version.tgz"
+  private def createTgz(
+    zip                 : File,
+    tgz                 : File,
+    artifactName        : String,
+    extraFiles          : Seq[File],
+    executableFilesInTar: Seq[String]
+  ): File = {
     val root = new File(".")
 
     var inputStream: ZipInputStream = null
@@ -84,7 +90,6 @@ object SbtDistributablesPlugin extends AutoPlugin {
       outputStream.closeArchiveEntry()
 
       addEntries(outputStream, root, extraFiles)
-      addEntries(outputStream, root, externalTgzFiles)
       copyEntries(inputStream, outputStream, root, artifactName, executableFilesInTar)
       logger.info(s"Your package is ready in $tgz")
     } finally {
@@ -94,43 +99,53 @@ object SbtDistributablesPlugin extends AutoPlugin {
     tgz
   }
 
-  private def addEntries(outputStream: TarArchiveOutputStream, root: File, extraFiles: Array[(String, String, Option[Int])]) =
-    for (extraFile <- extraFiles) {
-      val bytes = extraFile._2.getBytes("UTF-8")
-      addEntry(outputStream, root, new ByteArrayInputStream(bytes), extraFile._1, bytes.length)
-    }
-
-
-  private def addEntries(outputStream: TarArchiveOutputStream, root: File, extraFiles: Seq[File]) =
+  private def addEntries(outputStream: TarArchiveOutputStream, root: File, extraFiles: Seq[File]): Unit =
     extraFiles.foreach { extraFile =>
       val stream = new FileInputStream(extraFile.getAbsoluteFile)
       addEntry(outputStream, root, stream, extraFile.name, extraFile.getAbsoluteFile.length)
     }
 
-
-  private def addEntry(outputStream: TarArchiveOutputStream, root: File, stream: InputStream, name: String, size: Long) = {
+  private def addEntry(
+    outputStream: TarArchiveOutputStream,
+    root        : File,
+    stream      : InputStream,
+    name        : String,
+    size        : Long
+  ): Unit = {
     outputStream.putArchiveEntry(tarArchiveEntry(root, name, size, currentTimeMillis(), None))
     copy(stream, outputStream)
     outputStream.closeArchiveEntry()
   }
 
-  private def copyEntries(inputStream: ZipInputStream, outputStream: TarArchiveOutputStream, root: File, artifactName: String, executableFiles: Seq[String]) {
+  private def copyEntries(
+    inputStream    : ZipInputStream,
+    outputStream   : TarArchiveOutputStream,
+    root           : File,
+    artifactName   : String,
+    executableFiles: Seq[String]
+  ): Unit = {
     var inputZipEntry: ZipEntry = inputStream.getNextEntry
     while (inputZipEntry != null) {
-      outputStream.putArchiveEntry(tarArchiveEntry(root, inputZipEntry.getName, inputZipEntry.getSize, inputZipEntry.getTime, getTarEntryMode(inputZipEntry.getName, artifactName, executableFiles)))
+      outputStream.putArchiveEntry(
+        tarArchiveEntry(
+          root,
+          inputZipEntry.getName,
+          inputZipEntry.getSize,
+          inputZipEntry.getTime,
+          getTarEntryMode(inputZipEntry.getName, artifactName, executableFiles)
+        )
+      )
       copy(inputStream, outputStream)
       outputStream.closeArchiveEntry()
       inputZipEntry = inputStream.getNextEntry
     }
   }
 
-  private def getTarEntryMode(zipEntryName: String, artifactName: String, executableFiles: Seq[String]): Option[Int] = {
-    if (zipEntryName.endsWith(s"/bin/$artifactName") || executableFiles.exists(f => zipEntryName.endsWith( s"/bin/$f"))) {
+  private def getTarEntryMode(zipEntryName: String, artifactName: String, executableFiles: Seq[String]): Option[Int] =
+    if (zipEntryName.endsWith(s"/bin/$artifactName") || executableFiles.exists(f => zipEntryName.endsWith( s"/bin/$f")))
       Some(FILE_MODE_775)
-    } else {
+    else
       None
-    }
-  }
 
   private def tarArchiveEntry(root: File, name: String, size: Long, time: Long, mode: Option[Int]): TarArchiveEntry = {
     val outputTarEntry = new TarArchiveEntry(root / name)
@@ -140,20 +155,14 @@ object SbtDistributablesPlugin extends AutoPlugin {
     outputTarEntry
   }
 
-  private def extraTgzFiles(javaRuntimeVersion: String): Array[(String, String, Option[Int])] = {
-    Array(("system.properties", s"java.runtime.version=$javaRuntimeVersion", None))
-  }
-
-  private def javaRuntimeVersion(scalacOptions: Seq[String]): String = {
-    if (scalacOptions.contains("-target:jvm-1.8")) "1.8" else "1.7"
-  }
-
-  private def zipInputStream(zip: File): ZipInputStream = {
+  private def zipInputStream(zip: File): ZipInputStream =
     new ZipInputStream(new BufferedInputStream(new FileInputStream(zip)))
-  }
 
   private def tarArchiveOutputStream(file: File): TarArchiveOutputStream = {
-    val outputStream = new TarArchiveOutputStream(new GzipCompressorOutputStream(new BufferedOutputStream(new FileOutputStream(file))))
+    val outputStream = new TarArchiveOutputStream(
+                         new GzipCompressorOutputStream(
+                          new BufferedOutputStream(
+                            new FileOutputStream(file))))
     outputStream.setLongFileMode(LONGFILE_GNU)
     outputStream
   }

@@ -1,17 +1,10 @@
-val pluginName = "sbt-distributables"
-
-lazy val root = Project(pluginName, base = file("."))
-  .enablePlugins(SbtAutoBuildPlugin, SbtGitVersioning, SbtArtifactory)
+lazy val root = Project("sbt-distributables", file("."))
   .settings(
-    majorVersion := 2,
-    makePublicallyAvailableOnBintray := true
-  )
-  .settings(
-    sbtPlugin := true,
-    organization := "uk.gov.hmrc",
-    scalaVersion := "2.12.10",
-    crossSbtVersions := Vector("0.13.18", "1.3.4"),
-    resolvers += "Typesafe Releases" at "https://repo.typesafe.com/typesafe/releases/",
+    majorVersion     := 2,
+    isPublicArtefact := true,
+    sbtPlugin        := true,
+    scalaVersion     := "2.12.14",
+    crossSbtVersions := Vector("1.3.4"),
     libraryDependencies ++= Seq(
       "org.apache.commons"    % "commons-compress"  % "1.19"
     )
