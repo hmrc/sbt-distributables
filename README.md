@@ -55,3 +55,7 @@ tester-1.0.0.tgz
     Procfile
     start-docker.sh
 ```
+
+## Changes
+### Version 2.3.0
+- Compatible with `scala-parser-combinators:2.0.0`
