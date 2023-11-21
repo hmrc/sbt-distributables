@@ -18,7 +18,7 @@ package uk.gov.hmrc.sbtdistributables
 
 import java.io._
 import java.lang.System.currentTimeMillis
-import java.util.zip.{ZipEntry, ZipInputStream}
+import java.util.zip.ZipInputStream
 
 import org.apache.commons.compress.archivers.tar.TarArchiveOutputStream._
 import org.apache.commons.compress.archivers.tar.{TarArchiveEntry, TarArchiveOutputStream}
@@ -123,23 +123,24 @@ object SbtDistributablesPlugin extends AutoPlugin {
     root           : File,
     artifactName   : String,
     executableFiles: Seq[String]
-  ): Unit = {
-    var inputZipEntry: ZipEntry = inputStream.getNextEntry
-    while (inputZipEntry != null) {
-      outputStream.putArchiveEntry(
-        tarArchiveEntry(
-          root,
-          inputZipEntry.getName,
-          inputZipEntry.getSize,
-          inputZipEntry.getTime,
-          getTarEntryMode(inputZipEntry.getName, artifactName, executableFiles)
+  ): Unit =
+    Iterator
+      .continually(inputStream.getNextEntry)
+      .takeWhile(_ != null)
+      .filterNot(_.isDirectory)
+      .foreach { inputZipEntry =>
+        outputStream.putArchiveEntry(
+          tarArchiveEntry(
+            root,
+            inputZipEntry.getName,
+            inputZipEntry.getSize,
+            inputZipEntry.getTime,
+            getTarEntryMode(inputZipEntry.getName, artifactName, executableFiles)
+          )
         )
-      )
-      copy(inputStream, outputStream)
-      outputStream.closeArchiveEntry()
-      inputZipEntry = inputStream.getNextEntry
-    }
-  }
+        copy(inputStream, outputStream)
+        outputStream.closeArchiveEntry()
+      }
 
   private def getTarEntryMode(zipEntryName: String, artifactName: String, executableFiles: Seq[String]): Option[Int] =
     if (zipEntryName.endsWith(s"/bin/$artifactName") || executableFiles.exists(f => zipEntryName.endsWith(s"/bin/$f")))
@@ -151,7 +152,7 @@ object SbtDistributablesPlugin extends AutoPlugin {
     val outputTarEntry = new TarArchiveEntry(root / name)
     outputTarEntry.setSize(size)
     outputTarEntry.setModTime(time)
-    mode.foreach(m => outputTarEntry.setMode(m))
+    mode.foreach(outputTarEntry.setMode)
     outputTarEntry
   }
 
