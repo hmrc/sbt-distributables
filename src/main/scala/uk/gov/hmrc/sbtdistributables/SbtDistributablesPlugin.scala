@@ -40,7 +40,7 @@ object SbtDistributablesPlugin extends AutoPlugin {
 
   val publishTgz = TaskKey[sbt.File]("publishTgz", "publish tgz artifact")
 
-  private val FILE_MODE_775 = 493
+  private val FILE_MODE_755 = 493
 
   @deprecated("publishingSettings is not needed", "1.0.2")
   lazy val publishingSettings: Seq[sbt.Setting[_]] = Seq.empty
@@ -142,8 +142,8 @@ object SbtDistributablesPlugin extends AutoPlugin {
   }
 
   private def getTarEntryMode(zipEntryName: String, artifactName: String, executableFiles: Seq[String]): Option[Int] =
-    if (zipEntryName.endsWith(s"/bin/$artifactName") || executableFiles.exists(f => zipEntryName.endsWith( s"/bin/$f")))
-      Some(FILE_MODE_775)
+    if (zipEntryName.endsWith(s"/bin/$artifactName") || executableFiles.exists(f => zipEntryName.endsWith(s"/bin/$f")))
+      Some(FILE_MODE_755)
     else
       None
 
