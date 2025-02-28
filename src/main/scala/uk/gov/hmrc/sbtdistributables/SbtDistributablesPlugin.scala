@@ -23,7 +23,7 @@ import java.util.zip.ZipInputStream
 import org.apache.commons.compress.archivers.tar.TarArchiveOutputStream._
 import org.apache.commons.compress.archivers.tar.{TarArchiveEntry, TarArchiveOutputStream}
 import org.apache.commons.compress.compressors.gzip.GzipCompressorOutputStream
-import org.apache.commons.compress.utils.IOUtils._
+import org.apache.commons.io.IOUtils._
 import sbt.Keys._
 import sbt._
 
