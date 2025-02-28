@@ -3,8 +3,8 @@ lazy val root = Project("sbt-distributables", file("."))
     majorVersion     := 2,
     isPublicArtefact := true,
     sbtPlugin        := true,
-    scalaVersion     := "2.12.18",
+    scalaVersion     := "2.12.20",
     libraryDependencies ++= Seq(
-      "org.apache.commons"    % "commons-compress"  % "1.25.0"
+      "org.apache.commons"    % "commons-compress"  % "1.27.1"
     )
-  ).settings(addSbtPlugin("com.github.sbt" % "sbt-native-packager" % "1.9.16"))
+  ).settings(addSbtPlugin("com.github.sbt" % "sbt-native-packager" % "1.11.1"))
